@@ -235,6 +235,8 @@ void explodeSS(std::string ss, bool libev, std::string custom_port, int local_po
         ss = regReplace(ss, "(.*?)@(.*):(.*)", "$1|$2|$3");
         args = split(ss, "|");
         secret = split(urlsafe_base64_decode(args[0]), ":");
+        if(args.size() < 3 || secret.size() < 2)
+            return;
         method = secret[0];
         password = secret[1];
         server = args[1];
@@ -246,6 +248,8 @@ void explodeSS(std::string ss, bool libev, std::string custom_port, int local_po
             return;
         ss = regReplace(urlsafe_base64_decode(ss), "(.*?):(.*?)@(.*):(.*)", "$1|$2|$3|$4");
         args = split(ss, "|");
+        if(args.size() < 4)
+            return;
         method = args[0];
         password = args[1];
         server = args[2];
@@ -325,16 +329,18 @@ void explodeSSAndroid(std::string ss, bool libev, std::string custom_port, int l
 
     for(unsigned int i = 0; i < json["nodes"].Size(); i++)
     {
-        json["nodes"][i]["remarks"] >> ps;
-        json["nodes"][i]["server"] >> server;
+        server = GetMember(json["nodes"][i], "server");
+        if(server.empty())
+            continue;
+        ps = GetMember(json["nodes"][i], "remarks");
         if(custom_port.size())
             port = custom_port;
         else
-            json["nodes"][i]["server_port"] >> port;
+            port = GetMember(json["nodes"][i], "server_port");
         if(ps == "")
             ps = server + ":" + port;
-        json["nodes"][i]["password"] >> password;
-        json["nodes"][i]["method"] >> method;
+        password = GetMember(json["nodes"][i], "password");
+        method = GetMember(json["nodes"][i], "method");
         plugin = GetMember(json["nodes"][i], "plugin");
         pluginopts = GetMember(json["nodes"][i], "plugin_opts");
 
@@ -1370,7 +1376,7 @@ void explodeNetchConf(std::string netch, bool ss_libev, bool ssr_libev, std::str
 bool chkIgnore(const nodeInfo &node, string_array &exclude_remarks, string_array &include_remarks)
 {
     bool excluded = false, included = false;
-    //std::string remarks = UTF8ToGBK(node.remarks);
+    //std::string remarks = UTF8ToACP(node.remarks);
     std::string remarks = node.remarks;
     writeLog(LOG_TYPE_INFO, "Comparing exclude remarks...");
     excluded = std::any_of(exclude_remarks.cbegin(), exclude_remarks.cend(), [&remarks](auto &x)
@@ -1457,6 +1463,7 @@ int explodeConfContent(std::string content, std::string custom_port, int local_p
 
 void explode(std::string link, bool sslibev, bool ssrlibev, std::string custom_port, int local_port, nodeInfo &node)
 {
+    // TODO: replace strFind with startsWith if appropriate
     if(strFind(link, "ssr://"))
         explodeSSR(link, sslibev, ssrlibev, custom_port, local_port, node);
     else if(strFind(link, "vmess://") || strFind(link, "vmess1://"))
