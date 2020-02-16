@@ -59,7 +59,7 @@ std::string getRuleset(RESPONSE_CALLBACK_ARGS)
     std::string url = urlsafe_base64_decode(getUrlArg(argument, "url")), type = getUrlArg(argument, "type"), group = urlsafe_base64_decode(getUrlArg(argument, "group"));
     std::string output_content;
 
-    if(!url.size() || !type.size() || !group.size() || (type != "1" && type != "2"))
+    if(!url.size() || !type.size() || (type == "2" && !group.size()) || (type != "1" && type != "2"))
     {
         *status_code = 400;
         return "Invalid request!";
@@ -94,6 +94,11 @@ std::string getRuleset(RESPONSE_CALLBACK_ARGS)
                 continue;
 
             lineSize = strLine.size();
+            if(lineSize && strLine[lineSize - 1] == '\r') //remove line break
+            {
+                strLine.erase(lineSize - 1);
+                lineSize--;
+            }
 
             if(!strLine.empty() && (strLine[0] != ';' && strLine[0] != '#' && !(lineSize >= 2 && strLine[0] == '/' && strLine[1] == '/')))
             {
@@ -1297,7 +1302,7 @@ std::string surgeConfToClash(RESPONSE_CALLBACK_ARGS)
         return "No nodes were found!";
     }
 
-    extra_settings ext = {true, true, dummy_str_array, dummy_str_array, false, false, false, udp_flag, tfo_flag, false, do_sort, scv_flag, filter_deprecated, ""};
+    extra_settings ext = {true, true, dummy_str_array, dummy_str_array, false, false, false, udp_flag, tfo_flag, false, do_sort, scv_flag, filter_deprecated, "", ""};
 
     netchToClash(nodes, clash, dummy_str_array, false, ext);
 
