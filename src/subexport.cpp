@@ -970,7 +970,7 @@ std::string netchToSurge(std::vector<nodeInfo> &nodes, std::string &base_conf, s
             if(ext.skip_cert_verify)
                 proxy += ", skip-cert-verify=1";
         }
-        else if(type == "HTTP" || type == "HTTPS")
+        else if(x.linkType == SPEEDTEST_MESSAGE_FOUNDHTTP)
         {
             proxy = "http," + hostname + "," + port + ", " + username + ", " + password;
             proxy += std::string(", tls=") + (type == "HTTPS" ? "true" : "false");
@@ -1796,7 +1796,7 @@ std::string netchToSSD(std::vector<nodeInfo> &nodes, std::string &group, std::st
             const time_t rawtime = to_int(expiry);
             char buffer[30];
             struct tm *dt = localtime(&rawtime);
-            strftime(buffer, sizeof(buffer), "%F %R", dt);
+            strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M", dt);
             writer.Key("expiry");
             writer.String(buffer);
         }
@@ -1982,7 +1982,7 @@ void netchToMellow(std::vector<nodeInfo> &nodes, INIReader &ini, std::vector<rul
         {
             proxy = remark + ", builtin, socks, address=" + hostname + ", port=" + port + ", user=" + username + ", pass=" + password;
         }
-        else if(type == "HTTP")
+        else if(x.linkType == SPEEDTEST_MESSAGE_FOUNDHTTP)
         {
             proxy = remark + ", builtin, http, address=" + hostname + ", port=" + port + ", user=" + username + ", pass=" + password;
         }
