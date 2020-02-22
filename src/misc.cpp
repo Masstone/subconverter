@@ -5,6 +5,7 @@
 #include <sstream>
 #include <iosfwd>
 #include <iostream>
+#include <cstdio>
 //#include <filesystem>
 #include <unistd.h>
 
@@ -688,9 +689,8 @@ std::string getMD5(const std::string &data)
 // TODO: Add preprocessor option to disable (open web service safety)
 std::string fileGet(const std::string &path, bool binary, bool scope_limit)
 {
-    std::ifstream infile;
-    std::stringstream strstrm;
-    std::ios::openmode mode = binary ? std::ios::binary : std::ios::in;
+    std::string content;
+    const char *mode = binary ? "rb" : "r";
 
     if(scope_limit)
     {
@@ -703,14 +703,16 @@ std::string fileGet(const std::string &path, bool binary, bool scope_limit)
 #endif // _WIN32
     }
 
-    infile.open(path, mode);
-    if(infile)
+    std::FILE *fp = std::fopen(path.c_str(), mode);
+    if(fp)
     {
-        strstrm<<infile.rdbuf();
-        infile.close();
-        return strstrm.str();
+        std::fseek(fp, 0, SEEK_END);
+        content.resize(std::ftell(fp));
+        std::rewind(fp);
+        std::fread(&content[0], 1, content.size(), fp);
+        std::fclose(fp);
     }
-    return std::string();
+    return content;
 }
 
 bool fileExist(const std::string &path)
@@ -759,7 +761,7 @@ int fileWrite(const std::string &path, const std::string &content, bool overwrit
     std::ios_base::openmode mode = overwrite ? std::ios_base::out : std::ios_base::app;
     mode |= std::ios_base::binary;
     outfile.open(path, mode);
-    outfile << content << std::endl;
+    outfile << content;
     outfile.close();
     return 0;
 }
