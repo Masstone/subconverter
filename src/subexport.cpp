@@ -655,6 +655,8 @@ void netchToClash(std::vector<nodeInfo> &nodes, YAML::Node &yamlnode, string_arr
             singleproxy["type"] = "ss";
             singleproxy["cipher"] = method;
             singleproxy["password"] = password;
+            if(std::all_of(password.begin(), password.end(), ::isdigit))
+                singleproxy["password"].SetTag("str");
             if(plugin == "simple-obfs" || plugin == "obfs-local")
             {
                 singleproxy["plugin"] = "obfs";
@@ -724,6 +726,8 @@ void netchToClash(std::vector<nodeInfo> &nodes, YAML::Node &yamlnode, string_arr
             singleproxy["type"] = "ssr";
             singleproxy["cipher"] = method;
             singleproxy["password"] = password;
+            if(std::all_of(password.begin(), password.end(), ::isdigit))
+                singleproxy["password"].SetTag("str");
             singleproxy["protocol"] = protocol;
             singleproxy["protocolparam"] = protoparam;
             singleproxy["obfs"] = obfs;
@@ -733,6 +737,8 @@ void netchToClash(std::vector<nodeInfo> &nodes, YAML::Node &yamlnode, string_arr
             singleproxy["type"] = "socks5";
             singleproxy["username"] = username;
             singleproxy["password"] = password;
+            if(std::all_of(password.begin(), password.end(), ::isdigit))
+                singleproxy["password"].SetTag("str");
             if(ext.skip_cert_verify)
                 singleproxy["skip-cert-verify"] = true;
             break;
@@ -740,6 +746,8 @@ void netchToClash(std::vector<nodeInfo> &nodes, YAML::Node &yamlnode, string_arr
             singleproxy["type"] = "http";
             singleproxy["username"] = username;
             singleproxy["password"] = password;
+            if(std::all_of(password.begin(), password.end(), ::isdigit))
+                singleproxy["password"].SetTag("str");
             singleproxy["tls"] = type == "HTTPS";
             if(ext.skip_cert_verify)
                 singleproxy["skip-cert-verify"] = true;
@@ -866,6 +874,11 @@ std::string netchToSurge(std::vector<nodeInfo> &nodes, std::string &base_conf, s
     string_array vArray, remarks_list, filtered_nodelist, args;
 
     ini.store_any_line = true;
+    // filter out sections that requires direct-save
+    ini.AddDirectSaveSection("Rule");
+    ini.AddDirectSaveSection("Script");
+    ini.AddDirectSaveSection("URL Rewrite");
+    ini.AddDirectSaveSection("Header Rewrite");
     if(ini.Parse(base_conf) != 0 && !ext.nodelist)
         return std::string();
 
@@ -1558,6 +1571,7 @@ std::string netchToQuanX(std::vector<nodeInfo> &nodes, std::string &base_conf, s
 {
     INIReader ini;
     ini.store_any_line = true;
+    ini.AddDirectSaveSection("rewrite_local");
     if(!ext.nodelist && ini.Parse(base_conf) != 0)
         return std::string();
 
