@@ -971,6 +971,7 @@ std::string subconverter(RESPONSE_CALLBACK_ARGS)
     ext.surge_ssr_path = surge_ssr_path;
     ext.quanx_dev_id = dev_id.size() ? dev_id : quanx_script_id;
     ext.enable_rule_generator = enable_rule_generator;
+    ext.overwrite_original_rules = overwrite_original_rules;
     if(expand != "true")
         ext.managed_config_prefix = managed_config_prefix;
 
@@ -1571,7 +1572,7 @@ std::string surgeConfToClash(RESPONSE_CALLBACK_ARGS)
 
 std::string getProfile(RESPONSE_CALLBACK_ARGS)
 {
-    std::string name = UrlDecode(getUrlArg(argument, "name")), token = UrlDecode(getUrlArg(argument, "token"));
+    std::string name = UrlDecode(getUrlArg(argument, "name")), token = UrlDecode(getUrlArg(argument, "token")), expand = getUrlArg(argument, "expand");
     if(token != access_token)
     {
         *status_code = 403;
@@ -1600,6 +1601,7 @@ std::string getProfile(RESPONSE_CALLBACK_ARGS)
         return "Broken profile!";
     }
     contents.emplace("token", token);
+    contents.emplace("expand", expand);
     std::string query;
     for(auto &x : contents)
     {
@@ -1732,11 +1734,12 @@ void simpleGenerator()
         if(ini.ItemExist("profile"))
         {
             profile = ini.Get("profile");
-            content = getProfile("name=" + UrlEncode(profile) + "&token=" + access_token, dummy_str, &ret_code, dummy_map);
+            content = getProfile("name=" + UrlEncode(profile) + "&token=" + access_token + "&expand=true", dummy_str, &ret_code, dummy_map);
         }
         else
         {
             ini.GetItems(allItems);
+            allItems.emplace("expand", "true");
             for(auto &y : allItems)
             {
                 if(y.first == "path")

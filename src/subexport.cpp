@@ -13,6 +13,7 @@
 #include <iostream>
 #include <numeric>
 #include <cmath>
+#include <climits>
 #include <rapidjson/writer.h>
 #include <rapidjson/document.h>
 #include <yaml-cpp/yaml.h>
@@ -244,14 +245,61 @@ std::string vmessLinkConstruct(std::string remarks, std::string add, std::string
     return sb.GetString();
 }
 
+bool matchRange(std::string &range, int target)
+{
+    string_array vArray = split(range, ",");
+    bool match = false;
+    int range_begin = 0, range_end = 0;
+    const std::string reg_num = "\\d+", reg_range = "(\\d+)-(\\d+)", reg_not = "\\!(\\d+)", reg_not_range = "\\!(\\d+)-(\\d+)", reg_less = "(\\d+)-", reg_more = "(\\d+)\\+";
+    for(std::string &x : vArray)
+    {
+        if(regMatch(x, reg_num))
+        {
+            if(to_int(x, INT_MAX) == target)
+                match = true;
+        }
+        else if(regMatch(x, reg_range))
+        {
+            range_begin = to_int(regReplace(x, reg_range, "$1"), INT_MAX);
+            range_end = to_int(regReplace(x, reg_range, "$2"), INT_MIN);
+            if(target >= range_begin && target <= range_end)
+                match = true;
+        }
+        else if(regMatch(x, reg_not))
+        {
+            if(to_int(regReplace(x, reg_not, "$1"), INT_MAX) == target)
+                match = false;
+        }
+        else if(regMatch(x, reg_not_range))
+        {
+            range_begin = to_int(regReplace(x, reg_range, "$1"), INT_MAX);
+            range_end = to_int(regReplace(x, reg_range, "$2"), INT_MIN);
+            if(target >= range_begin && target <= range_end)
+                match = false;
+        }
+        else if(regMatch(x, reg_less))
+        {
+            if(to_int(regReplace(x, reg_less, "$1"), INT_MAX) <= target)
+                match = true;
+        }
+        else if(regMatch(x, reg_more))
+        {
+            if(to_int(regReplace(x, reg_more, "$1"), INT_MIN) >= target)
+                match = true;
+        }
+    }
+    return match;
+}
+
 std::string nodeRename(std::string remark, int groupID, const string_array &rename_array)
 {
     string_array vArray;
-    int targetGroupID = groupID;
+    std::string targetRange;
     string_size pos;
 
     for(const std::string &x : rename_array)
     {
+        targetRange = std::to_string(groupID);
         vArray = split(x, "@");
         if(vArray.size() == 1)
         {
@@ -264,13 +312,13 @@ std::string nodeRename(std::string remark, int groupID, const string_array &rena
             pos = vArray[0].find("!!", vArray[0].find("!!") + 2);
             if(pos != vArray[0].npos)
             {
-                targetGroupID = to_int(vArray[0].substr(10, pos - 10), groupID);
+                targetRange = vArray[0].substr(10, pos - 10);
                 vArray[0] = vArray[0].substr(pos + 2);
             }
             else
                 continue;
         }
-        if(groupID == targetGroupID)
+        if(matchRange(targetRange, groupID))
             remark = regReplace(remark, vArray[0], vArray[1]);
     }
     return remark;
@@ -292,11 +340,12 @@ std::string removeEmoji(std::string remark)
 std::string addEmoji(std::string remark, int groupID, const string_array &emoji_array)
 {
     string_array vArray;
-    int targetGroupID = groupID;
+    std::string targetRange;
     string_size pos;
 
     for(const std::string &x : emoji_array)
     {
+        targetRange = std::to_string(groupID);
         vArray = split(x, ",");
         if(vArray.size() != 2)
             continue;
@@ -305,13 +354,13 @@ std::string addEmoji(std::string remark, int groupID, const string_array &emoji_
             pos = vArray[0].find("!!", vArray[0].find("!!") + 2);
             if(pos != vArray[0].npos)
             {
-                targetGroupID = to_int(vArray[0].substr(10, pos - 10), groupID);
+                targetRange = vArray[0].substr(10, pos - 10);
                 vArray[0] = vArray[0].substr(pos + 2);
             }
             else
                 continue;
         }
-        if(groupID == targetGroupID && regFind(remark, vArray[0]))
+        if(matchRange(targetRange, groupID) && regFind(remark, vArray[0]))
         {
             remark = vArray[1] + " " + remark;
             break;
@@ -566,7 +615,7 @@ void groupGenerate(std::string &rule, std::vector<nodeInfo> &nodelist, std::vect
 
             for(nodeInfo &y : nodelist)
             {
-                if(y.groupID == to_int(group) && regFind(y.remarks, rule) && std::find(filtered_nodelist.begin(), filtered_nodelist.end(), y.remarks) == filtered_nodelist.end())
+                if(matchRange(group, y.groupID) && regFind(y.remarks, rule) && std::find(filtered_nodelist.begin(), filtered_nodelist.end(), y.remarks) == filtered_nodelist.end())
                     filtered_nodelist.emplace_back(y.remarks);
             }
         }
@@ -576,7 +625,7 @@ void groupGenerate(std::string &rule, std::vector<nodeInfo> &nodelist, std::vect
 
             for(nodeInfo &y : nodelist)
             {
-                if(y.groupID == to_int(group) && std::find(filtered_nodelist.begin(), filtered_nodelist.end(), y.remarks) == filtered_nodelist.end())
+                if(matchRange(group, y.groupID) && std::find(filtered_nodelist.begin(), filtered_nodelist.end(), y.remarks) == filtered_nodelist.end())
                     filtered_nodelist.emplace_back(y.remarks);
             }
         }
@@ -789,20 +838,23 @@ void netchToClash(std::vector<nodeInfo> &nodes, YAML::Node &yamlnode, string_arr
         singlegroup["name"] = vArray[0];
         singlegroup["type"] = vArray[1];
 
-        if(vArray[1] == "select")
+        rules_upper_bound = vArray.size();
+        switch(hash_(vArray[1]))
         {
-            rules_upper_bound = vArray.size();
-        }
-        else if(vArray[1] == "url-test" || vArray[1] == "fallback" || vArray[1] == "load-balance")
-        {
-            if(vArray.size() < 5)
+        case "select"_hash:
+            break;
+        case "url-test"_hash:
+        case "fallback"_hash:
+        case "load-balance"_hash:
+            if(rules_upper_bound < 5)
                 continue;
-            rules_upper_bound = vArray.size() - 2;
-            singlegroup["url"] = vArray[vArray.size() - 2];
-            singlegroup["interval"] = to_int(vArray[vArray.size() - 1]);
-        }
-        else
+            rules_upper_bound -= 2;
+            singlegroup["url"] = vArray[rules_upper_bound];
+            singlegroup["interval"] = to_int(vArray[rules_upper_bound + 1]);
+            break;
+        default:
             continue;
+        }
 
         for(unsigned int i = 2; i < rules_upper_bound; i++)
             groupGenerate(vArray[i], nodelist, filtered_nodelist, true);
@@ -1043,14 +1095,14 @@ std::string netchToSurge(std::vector<nodeInfo> &nodes, std::string &base_conf, s
             break;
         case "url-test"_hash:
         case "fallback"_hash:
-            if(vArray.size() < 5)
+            if(rules_upper_bound < 5)
                 continue;
             rules_upper_bound -= 2;
             url = vArray[rules_upper_bound];
             interval = to_int(vArray[rules_upper_bound + 1]);
             break;
         case "ssid"_hash:
-            if(vArray.size() < 4)
+            if(rules_upper_bound < 4)
                 continue;
             proxy = vArray[1] + ",default=" + vArray[2] + ",";
             proxy += std::accumulate(vArray.begin() + 4, vArray.end(), vArray[3], [](std::string a, std::string b)
@@ -1058,7 +1110,6 @@ std::string netchToSurge(std::vector<nodeInfo> &nodes, std::string &base_conf, s
                 return std::move(a) + "," + std::move(b);
             });
             ini.Set("{NONAME}", vArray[0] + " = " + proxy); //insert order
-            continue;
         default:
             continue;
         }
@@ -1531,8 +1582,16 @@ void netchToQuan(std::vector<nodeInfo> &nodes, INIReader &ini, std::vector<rules
             break;
         case "fallback"_hash:
             type = "static";
+            if(vArray.size() < 5)
+                continue;
+            rules_upper_bound -= 2;
+            break;
         case "url-test"_hash:
             type = "auto";
+            if(vArray.size() < 5)
+                continue;
+            rules_upper_bound -= 2;
+            break;
         case "load-balance"_hash:
             type = "balance, round-robin";
             if(vArray.size() < 5)
@@ -1692,6 +1751,7 @@ void netchToQuanX(std::vector<nodeInfo> &nodes, INIReader &ini, std::vector<rule
             proxyStr += ", udp-relay=true";
         proxyStr += ", tag=" + remark;
 
+        remarks_list.push_back(remark);
         ini.Set("{NONAME}", proxyStr);
         nodelist.emplace_back(x);
     }
@@ -1726,11 +1786,16 @@ void netchToQuanX(std::vector<nodeInfo> &nodes, INIReader &ini, std::vector<rule
         case "url-test"_hash:
         case "fallback"_hash:
             type = "available";
-        case "load-balance"_hash:
-            type = "round-robin";
-            if(vArray.size() < 5)
+            if(rules_upper_bound < 5)
                 continue;
             rules_upper_bound -= 2;
+            break;
+        case "load-balance"_hash:
+            type = "round-robin";
+            if(rules_upper_bound < 5)
+                continue;
+            rules_upper_bound -= 2;
+            break;
         default:
             continue;
         }
@@ -1747,7 +1812,7 @@ void netchToQuanX(std::vector<nodeInfo> &nodes, INIReader &ini, std::vector<rule
         {
             std::string groupdata = n.second;
             std::string::size_type cpos = groupdata.find(",");
-            if(cpos != std::string::npos)
+            if(cpos != groupdata.npos)
                 return trim(groupdata.substr(0, cpos)) == name;
             else
                 return false;
@@ -1822,9 +1887,9 @@ void netchToQuanX(std::vector<nodeInfo> &nodes, INIReader &ini, std::vector<rule
             {
                 pos = content.find(",");
                 url = ext.managed_config_prefix + "/qx-rewrite?id=" + ext.quanx_dev_id + "&url=" + urlsafe_base64_encode(content.substr(0, pos));
-                content = url;
                 if(pos != content.npos)
-                    content += content.substr(content.find(","));
+                    url += content.substr(pos);
+                content = url;
             }
             ini.Set("{NONAME}", content);
         }
@@ -2091,6 +2156,7 @@ void netchToMellow(std::vector<nodeInfo> &nodes, INIReader &ini, std::vector<rul
                 continue;
             rules_upper_bound -= 2;
             url = vArray[vArray.size() - 2];
+            break;
         default:
             continue;
         }
@@ -2210,7 +2276,7 @@ std::string netchToLoon(std::vector<nodeInfo> &nodes, std::string &base_conf, st
                 if(pluginopts.size())
                     proxy += "," + replace_all_distinct(replace_all_distinct(pluginopts, ";obfs-host=", ","), "obfs=", "");
             }
-            else
+            else if(plugin.size())
                 continue;
             break;
         case SPEEDTEST_MESSAGE_FOUNDVMESS:
@@ -2314,7 +2380,6 @@ std::string netchToLoon(std::vector<nodeInfo> &nodes, std::string &base_conf, st
                 return std::move(a) + "," + std::move(b);
             });
             ini.Set("{NONAME}", vArray[0] + " = " + proxy); //insert order
-            continue;
         default:
             continue;
         }
