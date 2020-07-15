@@ -1,6 +1,9 @@
 #include <string>
 #include <iostream>
+#include <thread>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "logger.h"
 
@@ -35,32 +38,9 @@ std::string getTime(int type)
 
 void writeLog(int type, std::string content, int level)
 {
-    //placeholder
-    /*
-    if(print_debug_info)
-        std::cerr<<getTime(2)<<" [DEBUG] "<<content<<"\n";
-    */
     if(level > global_log_level)
         return;
-    switch(level)
-    {
-    case LOG_LEVEL_VERBOSE:
-        std::cerr<<getTime(2)<<" [VERBOSE] "<<content<<"\n";
-        break;
-    case LOG_LEVEL_DEBUG:
-        std::cerr<<getTime(2)<<" [DEBUG] "<<content<<"\n";
-        break;
-    case LOG_LEVEL_INFO:
-        std::cerr<<getTime(2)<<" [INFO] "<<content<<"\n";
-        break;
-    case LOG_LEVEL_WARNING:
-        std::cerr<<getTime(2)<<" [WARNING] "<<content<<"\n";
-        break;
-    case LOG_LEVEL_ERROR:
-        std::cerr<<getTime(2)<<" [ERROR] "<<content<<"\n";
-        break;
-    case LOG_LEVEL_FATAL:
-        std::cerr<<getTime(2)<<" [FATAL] "<<content<<"\n";
-        break;
-    }
+    const char *levels[] = {"[FATL]", "[ERRO]", "[WARN]", "[INFO]", "[DEBG]", "[VERB]"};
+    std::cerr<<getTime(2)<<" ["<<getpid()<<" "<<std::this_thread::get_id()<<"]"<<levels[level % 6];
+    std::cerr<<" "<<content<<"\n";
 }
