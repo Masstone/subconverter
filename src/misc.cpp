@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <sys/stat.h>
+#include <cstdlib>
 
 /*
 #ifdef USE_STD_REGEX
@@ -134,7 +135,7 @@ unsigned char ToHex(unsigned char x)
 
 unsigned char FromHex(unsigned char x)
 {
-    unsigned char y = '\0';
+    unsigned char y;
     if (x >= 'A' && x <= 'Z')
         y = x - 'A' + 10;
     else if (x >= 'a' && x <= 'z')
@@ -198,7 +199,7 @@ std::string UrlDecode(const std::string& str)
 /*
 static inline bool is_base64(unsigned char c)
 {
-    return (isalnum(c) || (c == '+') || (c == '/'));
+    return (isalnum(c) || (c == '+') || (c == '/') || (c == '-') || (c == '_'));
 }
 */
 
@@ -208,8 +209,7 @@ std::string base64_encode(const std::string &string_to_encode)
     unsigned int in_len = string_to_encode.size();
 
     std::string ret;
-    int i = 0;
-    int j = 0;
+    int i = 0, j;
     unsigned char char_array_3[3];
     unsigned char char_array_4[4];
 
@@ -256,7 +256,7 @@ std::string base64_decode(const std::string &encoded_string, bool accept_urlsafe
     string_size in_len = encoded_string.size();
     string_size i = 0;
     string_size in_ = 0;
-    unsigned char char_array_4[4], char_array_3[3], uchar = 0;
+    unsigned char char_array_4[4], char_array_3[3], uchar;
     static unsigned char dtable[256], itable[256], table_ready = 0;
     std::string ret;
 
@@ -281,7 +281,12 @@ std::string base64_decode(const std::string &encoded_string, bool accept_urlsafe
     {
         uchar = encoded_string[in_]; // make compiler happy
         if (!(accept_urlsafe ? itable[uchar] : (itable[uchar] == 1))) // break away from the while condition
+        {
+            ret += uchar; // not base64 encoded data, copy to result
+            in_++;
+            i = 0;
             continue;
+        }
         char_array_4[i++] = uchar;
         in_++;
         if (i == 4)
@@ -697,10 +702,10 @@ bool regFind(const std::string &src, const std::string &match)
     return reg.match(src, "g");
 }
 
-std::string regReplace(const std::string &src, const std::string &match, const std::string &rep, bool global)
+std::string regReplace(const std::string &src, const std::string &match, const std::string &rep, bool global, bool multiline)
 {
     jp::Regex reg;
-    reg.setPattern(match).addModifier("m").addPcre2Option(PCRE2_UTF|PCRE2_MULTILINE|PCRE2_ALT_BSUX).compile();
+    reg.setPattern(match).addModifier(multiline ? "m" : "").addPcre2Option(PCRE2_UTF|PCRE2_MULTILINE|PCRE2_ALT_BSUX).compile();
     if(!reg)
         return src;
     return reg.replace(src, rep, global ? "gx" : "x");
@@ -748,7 +753,7 @@ int regGetMatch(const std::string &src, const std::string &match, size_t group_c
 
 std::string regTrim(const std::string &src)
 {
-    return regReplace(src, "^\\s*?([\\s\\S]*)\\s*$", "$1", false);
+    return regReplace(src, "^\\s*([\\s\\S]*)\\s*$", "$1", false, false);
 }
 
 std::string speedCalc(double speed)
@@ -1087,6 +1092,7 @@ int to_int(const std::string &str, int def_value)
 {
     if(str.empty())
         return def_value;
+    /*
     int retval = 0;
     char c;
     std::stringstream ss(str);
@@ -1096,6 +1102,8 @@ int to_int(const std::string &str, int def_value)
         return def_value;
     else
         return retval;
+    */
+    return std::atoi(str.data());
 }
 
 std::string getFormData(const std::string &raw_data)
@@ -1157,7 +1165,7 @@ std::string getFormData(const std::string &raw_data)
 std::string UTF8ToCodePoint(const std::string &data)
 {
     std::stringstream ss;
-    int charcode = 0;
+    int charcode;
     for(std::string::size_type i = 0; i < data.size(); i++)
     {
         charcode = data[i] & 0xff;

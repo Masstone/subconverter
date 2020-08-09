@@ -87,10 +87,7 @@ std::string parseProxy(const std::string &source)
     return proxy;
 }
 
-#define basic_types "DOMAIN", "DOMAIN-SUFFIX", "DOMAIN-KEYWORD", "IP-CIDR", "SRC-IP-CIDR", "GEOIP", "MATCH", "FINAL"
-const string_array clash_rule_type = {basic_types, "IP-CIDR6", "SRC-PORT", "DST-PORT"};
-const string_array surge_rule_type = {basic_types, "IP-CIDR6", "USER-AGENT", "URL-REGEX", "AND", "OR", "NOT", "PROCESS-NAME", "IN-PORT", "DEST-PORT", "SRC-IP"};
-const string_array quanx_rule_type = {basic_types, "USER-AGENT", "HOST", "HOST-SUFFIX", "HOST-KEYWORD"};
+extern string_array clash_rule_type, surge_rule_type, quanx_rule_type;
 const std::map<std::string, ruleset_type> ruleset_types = {{"clash-domain:", RULESET_CLASH_DOMAIN}, {"clash-ipcidr:", RULESET_CLASH_IPCIDR}, {"clash-classic:", RULESET_CLASH_CLASSICAL}, \
             {"quanx:", RULESET_QUANX}, {"surge:", RULESET_SURGE}};
 
@@ -134,18 +131,17 @@ const std::vector<UAProfile> UAMatchList = {
 
 bool verGreaterEqual(const std::string &src_ver, const std::string &target_ver)
 {
-    int part_src, part_target;
-    string_size src_pos_beg = 0, src_pos_end = 0, target_pos_beg = 0, target_pos_end = 0;
+    string_size src_pos_beg = 0, src_pos_end, target_pos_beg = 0, target_pos_end;
     while(true)
     {
         src_pos_end = src_ver.find('.', src_pos_beg);
         if(src_pos_end == src_ver.npos)
             src_pos_end = src_ver.size();
-        part_src = std::stoi(src_ver.substr(src_pos_beg, src_pos_end - src_pos_beg));
+        int part_src = std::stoi(src_ver.substr(src_pos_beg, src_pos_end - src_pos_beg));
         target_pos_end = target_ver.find('.', target_pos_beg);
         if(target_pos_end == target_ver.npos)
             target_pos_end = target_ver.size();
-        part_target = std::stoi(target_ver.substr(target_pos_beg, target_pos_end - target_pos_beg));
+        int part_target = std::stoi(target_ver.substr(target_pos_beg, target_pos_end - target_pos_beg));
         if(part_src > part_target)
             break;
         else if(part_src < part_target)
@@ -1240,7 +1236,7 @@ int loadExternalConfig(std::string &path, ExternalConfig &ext)
     try
     {
         YAML::Node yaml = YAML::Load(base_content);
-        if(yaml.size() && yaml["custom"])
+        if(yaml.size() && yaml["custom"].IsDefined())
             return loadExternalYAML(yaml, ext);
     }
     catch (YAML::Exception &e)
