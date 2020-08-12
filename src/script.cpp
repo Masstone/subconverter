@@ -23,7 +23,7 @@ std::string foldPathString(const std::string &path)
         pos_up = output.find("../", pos_unres);
         if(pos_up == output.npos)
             break;
-        else if(pos_up == 0)
+        if(pos_up == 0)
         {
             pos_unres = pos_up + 3;
             continue;
@@ -65,10 +65,9 @@ duk_ret_t cb_resolve_module(duk_context *ctx)
     const char *requested_id = duk_get_string(ctx, 0);
     const char *parent_id = duk_get_string(ctx, 1);  /* calling module */
     //const char *resolved_id;
-    std::string resolved_id;
-    if(strlen(parent_id))
+    std::string resolved_id, parent_path = parent_id;
+    if(!parent_path.empty())
     {
-        std::string parent_path = parent_id;
         string_size pos = parent_path.rfind("/");
         if(pos != parent_path.npos)
             resolved_id += parent_path.substr(0, pos + 1);
