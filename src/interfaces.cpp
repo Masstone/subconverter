@@ -95,7 +95,7 @@ struct UAProfile
     std::string version_match;
     std::string version_target;
     std::string target;
-    tribool clash_new_name;
+    tribool clash_new_name = tribool();
     int surge_ver = -1;
 };
 
@@ -1330,7 +1330,7 @@ std::string subconverter(RESPONSE_CALLBACK_ARGS)
     tribool argClashNewField = getUrlArg(argument, "new_name");
     int intSurgeVer = argSurgeVer.size() ? to_int(argSurgeVer, 3) : 3;
     if(argTarget == "auto")
-        matchUserAgent(request.headers["X-User-Agent"], argTarget, argClashNewField, intSurgeVer);
+        matchUserAgent(request.headers["User-Agent"], argTarget, argClashNewField, intSurgeVer);
 
     switch(hash_(argTarget))
     {
